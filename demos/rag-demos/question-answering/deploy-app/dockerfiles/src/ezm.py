@@ -1,4 +1,3 @@
-    loader = TextLoader(fn)
 import os
 import glob
 import base64
@@ -17,9 +16,26 @@ domain = None
 username = None
 password = None
 predictor_image = None
-llm_image = None
-transformer_image = None
 
+
+# llm
+llm_inference_service_name = None
+llm_predictor_name = None
+llm_predictor_image = None
+llm_predictor_cpu_request = None
+llm_predictor_cpu_limit = None
+llm_predictor_memory_request = None
+llm_predictor_memory_limit = None
+llm_predictor_gpu_request = None
+llm_predictor_gpu_limit = None
+llm_transformer_name = None
+llm_transformer_image = None
+llm_transformer_cpu_request = None
+llm_transformer_cpu_limit = None
+llm_transformer_memory_request = None
+llm_transformer_memory_limit = None
+llm_transformer_gpu_request = None
+llm_transformer_gpu_limit = None
 
 def config_environ():
     os.environ["HTTP_PROXY"] = ""
@@ -36,7 +52,10 @@ def config_environ():
     os.environ["MLFLOW_TRACKING_URI"] = "http://mlflow.mlflow.svc.cluster.local:5000"
 
 def get_token():
+
+    global domain
     token_url = f"https://keycloak.{domain}/realms/UA/protocol/openid-connect/token"
+    print(domain)
     data = {
         "username" : username,
         "password" : password,
@@ -51,7 +70,7 @@ def get_token():
 def check_object_ready(obj, name):
     result = subprocess.run(["kubectl", "get", obj+"/"+name, "-n", username],  capture_output=True)
     output = result.stdout.decode("utf-8")
-    
+
     
     #print(result)
     #print(output)
@@ -60,7 +79,7 @@ def check_object_ready(obj, name):
         return False
     if "True" in output.split("\n")[1]:
         return True
-
+        
 def wait_for_ready(obj, name): # 5 * 12 * 10 = 10M
     complete = False
     for i in range(12 * 10):
@@ -68,7 +87,7 @@ def wait_for_ready(obj, name): # 5 * 12 * 10 = 10M
         if complete:
             break
         time.sleep(5)
-
+        
     if(complete):
         print("K8S Object Ready: {name}")
     else:
@@ -83,7 +102,7 @@ def load_doc(fn):
     loader = TextLoader(fn)
     doc = loader.load()
     return doc
-
+	
 def load_docs(source_dir: str) -> list:
     """Load all documents in a the given directory."""
     fns = glob.glob(os.path.join(source_dir, "*.txt"))
@@ -92,22 +111,22 @@ def load_docs(source_dir: str) -> list:
         docs.extend(load_doc(fn))
 
     return docs
-
+	
 def process_docs(docs: list, chunk_size: int, chunk_overlap: int) -> list:
     """Load the documents and split them into chunks."""
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
     texts = text_splitter.split_documents(docs)
     return texts
-
+	
 def hugging_face_embeddings():
     embeddings_model = "all-MiniLM-L6-v2"
     return HuggingFaceEmbeddings(model_name=embeddings_model)
-    
+	
 def storing_chroma(texts, embeddings):
     db = Chroma.from_documents(texts, embeddings, persist_directory=f"{os.getcwd()}/db")
     db.persist()
     return db
-    
+	
 def test_query(db):
     query = "How can I create a cgroup?"
     matches = db.similarity_search(query); matches
@@ -209,55 +228,67 @@ spec:
 
     wait_for_ready("inferenceservice","vectorstore")
 
+
 ## 04.serve-llm ##
 def apply_llm():
     isvc = """
 apiVersion: serving.kserve.io/v1beta1
 kind: InferenceService
 metadata:
-  name: llm
+  name: {0}
 spec:
   predictor:
     timeout: 600
     containers:
-      - name: kserve-container
-        image: {0}
+      - name: {1}
+        image: {2}
         imagePullPolicy: Always
         # If you are running behind a proxy, uncomment the following lines and replace the values with your proxy URLs.
         env:
         - name: HTTP_PROXY
-          value: {1}
+          value: {3}
         - name: HTTPS_PROXY
-          value: {2}
+          value: {4}
         - name: NO_PROXY
           value: .local
         resources:
           requests:
-            memory: "8Gi"
-            cpu: "1000m"
+            memory: "{7}"
+            cpu: "{5}"
           limits:
-            memory: "8Gi"
-            cpu: "1000m"
+            memory: "{8}"
+            cpu: "{6}"
   transformer:
     timeout: 600
     containers:
-      - image: {3}
+      - image: {10}
         imagePullPolicy: Always
         resources:
           requests:
-            memory: "1Gi"
-            cpu: "500m"
+            memory: "{13}"
+            cpu: "{11}"
           limits:
-            memory: "1Gi"
-            cpu: "500m"
-        name: kserve-container
+            memory: "{14}"
+            cpu: "{12}"
+        name: {9}
         args: ["--use_ssl"]
-""".format(llm_image,
+""".format(llm_inference_service_name,
+           llm_predictor_name,
+           llm_predictor_image,
            os.environ["HTTP_PROXY"],
            os.environ["HTTPS_PROXY"],
-           transformer_image)
+           llm_predictor_cpu_request,
+           llm_predictor_cpu_limit,
+           llm_predictor_memory_request,
+           llm_predictor_memory_limit,
+           llm_transformer_name,
+           llm_transformer_image,
+           llm_transformer_cpu_request,
+           llm_transformer_cpu_limit,
+           llm_transformer_memory_request,
+           llm_transformer_memory_limit)
     with open("llm-isvc.yaml", "w") as f:
         f.write(isvc)
     subprocess.run(["kubectl", "apply", "-f", "llm-isvc.yaml"])
-
+    
     wait_for_ready("inferenceservice", "llm")
