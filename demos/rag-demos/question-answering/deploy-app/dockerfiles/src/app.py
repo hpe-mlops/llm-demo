@@ -43,19 +43,16 @@ STYLE = """
 CUSTOM_JS = """
 
 <script>
-function progress(lastIdex) {
+function progress() {
 
 	document.querySelector("#btn_interface").click()
 	var strProgress = document.querySelector("#tb_interface > * > textarea").value
 	var listProgress = strProgress.split("\\n")
-	
-	var pointerIndex = lastIdex;
 
-	for (i = lastIdex; i < listProgress.length; i++) {
+	for (i = 0; i < listProgress.length; i++) {
 		var line = listProgress[i].trim();
 		if(line === null || line === "")
 			continue;
-		pointerIndex++;
 		
 		var lineSplit = line.split(";")
 		
@@ -80,16 +77,14 @@ function progress(lastIdex) {
             }
         }
 	} 
-	return pointerIndex;
 }
 
 // remove async 
 async function pollProgress () { 
   const timer = ms => new Promise(res => setTimeout(res, ms))
   await timer(3000);
-  var lastIdex = 0;
   for (var i = 0; i < 3600; i++) {
-	lastIdex = progress(lastIdex);
+	progress();
     await timer(1000); 
   }
   return "";
@@ -331,7 +326,7 @@ if __name__ == "__main__":
 
         # Debug
         btn_clean = gr.Button("Clean", elem_id="clean", visible=True)
-        btn_clean.click(fn=clean, js="location.reload")
+        btn_clean.click(fn=clean)
 
 
 
