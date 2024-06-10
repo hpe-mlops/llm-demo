@@ -1,0 +1,39 @@
+# 허깅페이스의 모델 URL 경로
+# ex) https://huggingface.co/yanolja/EEVE-Korean-10.8B-v1.0/tree/main
+export model_name=EEVE-Korean-Instruct-10.8B-v1.0
+
+# 해당 폴더 이름이 Triton Image에 만들어 짐, (/opt/tritonserver/backends/vllm/download)
+# model.json 파일에서도 해당 경로를 지정하기 때문에, 변경시 같이 수정
+export download_path=download
+
+# 폴더 생성
+mkdir ${download_path}
+
+# 직접 다운 로드 (실제 파일 확인 및 변경 필요)
+curl -L -o ${download_path}/config.json "https://huggingface.co/yanolja/${model_name}/resolve/main/config.json?download=true"
+curl -L -o ${download_path}/special_tokens_map.json "https://huggingface.co/yanolja/${model_name}/resolve/main/tokenizer.json?download=true"
+curl -L -o ${download_path}/tokenizer.json "https://huggingface.co/yanolja/${model_name}/resolve/main/special_tokens_map.json?download=true"
+curl -L -o ${download_path}/tokenizer_config.json "https://huggingface.co/yanolja/${model_name}/resolve/main/tokenizer_config.json?download=true"
+curl -L -o ${download_path}/model.safetensors.index.json "https://huggingface.co/yanolja/${model_name}/resolve/main/model.safetensors.index.json?download=true"
+curl -L -o ${download_path}/model-00001-of-00005.safetensors "https://huggingface.co/yanolja/${model_name}/resolve/main/model-00001-of-00005.safetensors?download=true"
+curl -L -o ${download_path}/model-00002-of-00005.safetensors "https://huggingface.co/yanolja/${model_name}/resolve/main/model-00002-of-00005.safetensors?download=true"
+curl -L -o ${download_path}/model-00003-of-00005.safetensors "https://huggingface.co/yanolja/${model_name}/resolve/main/model-00003-of-00005.safetensors?download=true"
+curl -L -o ${download_path}/model-00004-of-00005.safetensors "https://huggingface.co/yanolja/${model_name}/resolve/main/model-00004-of-00005.safetensors?download=true"
+curl -L -o ${download_path}/model-00005-of-00005.safetensors "https://huggingface.co/yanolja/${model_name}/resolve/main/model-00005-of-00005.safetensors?download=true"
+
+# 권한 Triton 내부 권한 (1000:1000)
+chown -R 1000:1000 ${download_path}
+
+# 작업 디렉토리 및 파일 구조
+./Dockerfile
+./download
+./download/config.json
+./download/special_tokens_map.json
+./download/tokenizer.json
+./download/tokenizer_config.json
+./download/model-00001-of-00005.safetensors
+./download/model-00002-of-00005.safetensors
+./download/model-00003-of-00005.safetensors
+./download/model-00004-of-00005.safetensors
+./download/model-00005-of-00005.safetensors
+

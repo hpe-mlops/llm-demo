@@ -1,0 +1,6 @@
+
+# Docker 빌드
+docker build -t harbor.ezml.local/dev/tritonserver:24.05-vllm-with-s3 .
+
+# Harbor로 이미지 푸시
+docker push harbor.ezml.local/dev/tritonserver:24.05-vllm-with-s3
